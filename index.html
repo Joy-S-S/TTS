@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض النصوص والصوت من ESP32</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            border-right: 5px solid #4CAF50;
+        }
+
+        .message-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .message-time {
+            font-size: 14px;
+            color: #666;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .connected {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+
+        .disconnected {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>عرض النصوص والصوت من ESP32</h1>
+
+        <div id="status" class="status disconnected">
+            غير متصل بالسيرفر
+        </div>
+
+        <div id="messages-container">
+            <!-- الرسائل ستظهر هنا تلقائياً -->
+        </div>
+    </div>
+
+    <script>
+        // إعدادات WebSocket (نفس منفذ Flask)
+        const websocketHost = "192.168.1.8";
+        const websocketPort = 5000;
+
+        // إنشاء اتصال WebSocket مع Flask-SocketIO
+        const socket = io("http://192.168.1.8:5000", {
+  transports: ['websocket'],
+  upgrade: false,
+  forceNew: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  auth: {
+    token: "web-client"
+  },
+  query: {
+    EIO: "4",
+    transport: "websocket"
+  }
+});
+
+        // عناصر DOM
+        const statusElement = document.getElementById('status');
+        const messagesContainer = document.getElementById('messages-container');
+
+        // معالجة أحداث الاتصال
+        socket.on('connect', function () {
+            console.log("تم الاتصال بسيرفر WebSocket");
+            statusElement.textContent = "متصل بالسيرفر - جاهز لاستقبال البيانات";
+            statusElement.className = "status connected";
+        });
+
+        socket.on('disconnect', function () {
+            console.log("تم إغلاق الاتصال");
+            statusElement.textContent = "انقطع الاتصال بالسيرفر - يحاول إعادة الاتصال...";
+            statusElement.className = "status disconnected";
+
+            // محاولة إعادة الاتصال تلقائياً
+            setTimeout(function () {
+                socket.connect();
+            }, 5000);
+        });
+
+        socket.on('new_audio', function (data) {
+            try {
+                // إنشاء عنصر لعرض الرسالة والصوت
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+
+                // إضافة النص
+                const textDiv = document.createElement('div');
+                textDiv.className = 'message-text';
+                textDiv.textContent = data.text;
+                messageDiv.appendChild(textDiv);
+
+                // إضافة الوقت
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = `تم إنشاؤه في: ${data.timestamp}`;
+                messageDiv.appendChild(timeDiv);
+
+                // إنشاء عنصر الصوت
+                const audioElement = document.createElement('audio');
+                audioElement.controls = true;
+                audioElement.autoplay = true;
+
+                // تحويل base64 إلى مصدر الصوت
+                const audioSrc = `data:audio/mp3;base64,${data.audio}`;
+                audioElement.src = audioSrc;
+
+                messageDiv.appendChild(audioElement);
+
+                // إضافة الرسالة إلى بداية القائمة
+                messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+
+                // تشغيل الصوت تلقائياً
+                audioElement.play().catch(e => {
+                    console.log("تعذر تشغيل الصوت تلقائياً:", e);
+                });
+
+            } catch (e) {
+                console.error("خطأ في معالجة الرسالة:", e);
+            }
+        });
+    </script>
+</body>
+
+</html>
