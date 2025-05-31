@@ -21,9 +21,12 @@ socketio = SocketIO(app,
                   allow_upgrades=False,  # تعطيل الترقية التلقائية
                   transports=['websocket'])  # السماح فقط بـ WebSocket
 
+from flask import send_file  # أضفها فوق
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return send_file('index.html')
+
 
 @app.route('/socket.io/')
 def handle_socketio():
