@@ -86,12 +86,12 @@ def handle_connect():
 def handle_disconnect():
     print(f'عميل انقطع: {request.sid}')
 
+import os
+
 if __name__ == '__main__':
-    # تشغيل الخادم مع إعدادات محسنة
+    port = int(os.environ.get("PORT", 5000))  # لو Railway موفرش PORT، يستخدم 5000 محلياً
     socketio.run(app,
-                host='0.0.0.0',
-                port=5000,
-                debug=True,
-                use_reloader=False,
-                allow_unsafe_werkzeug=True,
-                log_output=True)
+                 host='0.0.0.0',
+                 port=port,
+                 debug=False)
+
